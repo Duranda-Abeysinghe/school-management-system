@@ -2371,11 +2371,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Company\\school-management-system\\backend\\SchoolManagementAPI\\SchoolManagementAPI.csproj",
+      "projectUniqueName": "C:\\Users\\VICTUS\\Documents\\GitHub\\school-management-system\\backend\\SchoolManagementAPI\\SchoolManagementAPI.csproj",
       "projectName": "SchoolManagementAPI",
-      "projectPath": "D:\\Company\\school-management-system\\backend\\SchoolManagementAPI\\SchoolManagementAPI.csproj",
+      "projectPath": "C:\\Users\\VICTUS\\Documents\\GitHub\\school-management-system\\backend\\SchoolManagementAPI\\SchoolManagementAPI.csproj",
       "packagesPath": "C:\\Users\\VICTUS\\.nuget\\packages\\",
-      "outputPath": "D:\\Company\\school-management-system\\backend\\SchoolManagementAPI\\obj\\",
+      "outputPath": "C:\\Users\\VICTUS\\Documents\\GitHub\\school-management-system\\backend\\SchoolManagementAPI\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\VICTUS\\AppData\\Roaming\\NuGet\\NuGet.Config"

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "wKrxK4xG/es=",
+  "dgSpecHash": "w4VhJhB1xbo=",
   "success": true,
-  "projectFilePath": "D:\\Company\\school-management-system\\backend\\SchoolManagementAPI\\SchoolManagementAPI.csproj",
+  "projectFilePath": "C:\\Users\\VICTUS\\Documents\\GitHub\\school-management-system\\backend\\SchoolManagementAPI\\SchoolManagementAPI.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\VICTUS\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
     "C:\\Users\\VICTUS\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
