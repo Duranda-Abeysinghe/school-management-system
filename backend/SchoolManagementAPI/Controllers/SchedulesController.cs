@@ -13,136 +13,195 @@ namespace SchoolManagementAPI.Controllers;
 public class SchedulesController : ControllerBase
 {
     private readonly AppDbContext _db;
-    private static readonly string[] DayOrder =
-        { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
-
     public SchedulesController(AppDbContext db) { _db = db; }
 
-    private static object Shape(Schedule s) => new
-    {
-        s.Id, s.ClassId, s.SubjectId, s.TeacherId,
-        s.Day,
-        StartTime = s.StartTime.ToString(@"hh\:mm"),
-        EndTime   = s.EndTime.ToString(@"hh\:mm"),
-        s.Room,
-        ClassName   = s.Class != null ? s.Class.ClassName + " " + s.Class.Section : null,
-        SubjectName = s.Subject != null ? s.Subject.SubjectName : null,
-        TeacherName = s.Teacher != null ? s.Teacher.FullName : null
-    };
+    private static string FormatTime(TimeSpan? t) =>
+        t.HasValue ? t.Value.ToString(@"hh\:mm") : "";
 
-    // GET /api/schedules  -> full list for Admin management page
+    // GET /api/schedules
     [HttpGet]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetAll()
     {
         try
         {
-            var list = await _db.Schedules
-                .Include(s => s.Class).Include(s => s.Subject).Include(s => s.Teacher)
+            var schedules = await _db.Schedules
+                .Include(s => s.Class)
+                .Include(s => s.Subject)
+                .Include(s => s.Teacher)
+                .OrderBy(s => s.Day).ThenBy(s => s.StartTime)
+                .Select(s => new {
+                    s.Id,
+                    s.ClassId,
+                    ClassName   = s.Class   != null ? s.Class.ClassName + " " + s.Class.Section : null,
+                    s.SubjectId,
+                    SubjectName = s.Subject != null ? s.Subject.SubjectName : null,
+                    s.TeacherId,
+                    TeacherName = s.Teacher != null ? s.Teacher.FullName : null,
+                    s.Day,
+                    s.StartTime,
+                    s.EndTime,
+                    s.Room,
+                })
                 .ToListAsync();
 
-            var ordered = list
-                .OrderBy(s => Array.IndexOf(DayOrder, s.Day))
-                .ThenBy(s => s.StartTime)
-                .Select(Shape);
+            var result = schedules.Select(s => new {
+                s.Id, s.ClassId, s.ClassName,
+                s.SubjectId, s.SubjectName,
+                s.TeacherId, s.TeacherName,
+                s.Day,
+                StartTime = s.StartTime.ToString(@"hh\:mm"),
+                EndTime   = s.EndTime.ToString(@"hh\:mm"),
+                s.Room,
+            });
 
-            return Ok(ordered);
+            return Ok(result);
         }
         catch (Exception ex) { return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message }); }
     }
 
-    // GET /api/schedules/teacher/5  -> used by Teacher "My Schedule" page
-    [HttpGet("teacher/{teacherId}")]
-    public async Task<IActionResult> GetByTeacher(int teacherId)
-    {
-        try
-        {
-            var list = await _db.Schedules
-                .Include(s => s.Class).Include(s => s.Subject).Include(s => s.Teacher)
-                .Where(s => s.TeacherId == teacherId)
-                .ToListAsync();
-
-            var ordered = list
-                .OrderBy(s => Array.IndexOf(DayOrder, s.Day))
-                .ThenBy(s => s.StartTime)
-                .Select(Shape);
-
-            return Ok(ordered);
-        }
-        catch (Exception ex) { return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message }); }
-    }
-
-    // GET /api/schedules/class/3  -> used by Student "Class Schedule" page
-    [HttpGet("class/{classId}")]
+    // GET /api/schedules/class/{classId}
+    [HttpGet("class/{classId:int}")]
     public async Task<IActionResult> GetByClass(int classId)
     {
         try
         {
-            var list = await _db.Schedules
-                .Include(s => s.Class).Include(s => s.Subject).Include(s => s.Teacher)
+            var schedules = await _db.Schedules
+                .Include(s => s.Class)
+                .Include(s => s.Subject)
+                .Include(s => s.Teacher)
                 .Where(s => s.ClassId == classId)
+                .OrderBy(s => s.Day).ThenBy(s => s.StartTime)
+                .Select(s => new {
+                    s.Id, s.ClassId,
+                    ClassName   = s.Class   != null ? s.Class.ClassName + " " + s.Class.Section : null,
+                    s.SubjectId,
+                    SubjectName = s.Subject != null ? s.Subject.SubjectName : null,
+                    s.TeacherId,
+                    TeacherName = s.Teacher != null ? s.Teacher.FullName : null,
+                    s.Day, s.StartTime, s.EndTime, s.Room,
+                })
                 .ToListAsync();
 
-            var ordered = list
-                .OrderBy(s => Array.IndexOf(DayOrder, s.Day))
-                .ThenBy(s => s.StartTime)
-                .Select(Shape);
+            var result = schedules.Select(s => new {
+                s.Id, s.ClassId, s.ClassName,
+                s.SubjectId, s.SubjectName,
+                s.TeacherId, s.TeacherName,
+                s.Day,
+                StartTime = s.StartTime.ToString(@"hh\:mm"),
+                EndTime   = s.EndTime.ToString(@"hh\:mm"),
+                s.Room,
+            });
 
-            return Ok(ordered);
+            return Ok(result);
         }
         catch (Exception ex) { return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message }); }
     }
 
+    // GET /api/schedules/teacher/{teacherId}
+    [HttpGet("teacher/{teacherId:int}")]
+    public async Task<IActionResult> GetByTeacher(int teacherId)
+    {
+        try
+        {
+            var schedules = await _db.Schedules
+                .Include(s => s.Class)
+                .Include(s => s.Subject)
+                .Include(s => s.Teacher)
+                .Where(s => s.TeacherId == teacherId)
+                .OrderBy(s => s.Day).ThenBy(s => s.StartTime)
+                .Select(s => new {
+                    s.Id, s.ClassId,
+                    ClassName   = s.Class   != null ? s.Class.ClassName + " " + s.Class.Section : null,
+                    s.SubjectId,
+                    SubjectName = s.Subject != null ? s.Subject.SubjectName : null,
+                    s.TeacherId,
+                    TeacherName = s.Teacher != null ? s.Teacher.FullName : null,
+                    s.Day, s.StartTime, s.EndTime, s.Room,
+                })
+                .ToListAsync();
+
+            var result = schedules.Select(s => new {
+                s.Id, s.ClassId, s.ClassName,
+                s.SubjectId, s.SubjectName,
+                s.TeacherId, s.TeacherName,
+                s.Day,
+                StartTime = s.StartTime.ToString(@"hh\:mm"),
+                EndTime   = s.EndTime.ToString(@"hh\:mm"),
+                s.Room,
+            });
+
+            return Ok(result);
+        }
+        catch (Exception ex) { return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message }); }
+    }
+
+    // POST /api/schedules
     [HttpPost]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] ScheduleDto dto)
     {
         try
         {
-            var entry = new Schedule
+            TimeSpan.TryParse(dto.StartTime, out var st);
+            TimeSpan.TryParse(dto.EndTime,   out var et);
+
+            var schedule = new Schedule
             {
                 ClassId   = dto.ClassId,
                 SubjectId = dto.SubjectId,
                 TeacherId = dto.TeacherId,
-                Day       = dto.Day,
-                StartTime = TimeSpan.Parse(dto.StartTime),
-                EndTime   = TimeSpan.Parse(dto.EndTime),
-                Room      = dto.Room
+                Day       = dto.Day       ?? "",
+                StartTime = st,
+                EndTime   = et,
+                Room      = dto.Room      ?? "",
             };
-            _db.Schedules.Add(entry);
+            _db.Schedules.Add(schedule);
             await _db.SaveChangesAsync();
-            return Ok(new ResponseDto { Success = true, Message = "Created", Data = entry });
+            return Ok(new ResponseDto { Success = true, Message = "Schedule created", Data = new { schedule.Id } });
         }
         catch (Exception ex) { return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message }); }
     }
 
-    [HttpPut("{id}")]
+    // PUT /api/schedules/{id}
+    [HttpPut("{id:int}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] ScheduleDto dto)
     {
-        var entry = await _db.Schedules.FindAsync(id);
-        if (entry == null) return NotFound(new ResponseDto { Success = false, Message = "Not found" });
+        try
+        {
+            var schedule = await _db.Schedules.FindAsync(id);
+            if (schedule == null) return NotFound(new ResponseDto { Success = false, Message = "Not found" });
 
-        entry.ClassId   = dto.ClassId;
-        entry.SubjectId = dto.SubjectId;
-        entry.TeacherId = dto.TeacherId;
-        entry.Day       = dto.Day;
-        entry.StartTime = TimeSpan.Parse(dto.StartTime);
-        entry.EndTime   = TimeSpan.Parse(dto.EndTime);
-        entry.Room      = dto.Room;
+            TimeSpan.TryParse(dto.StartTime, out var st);
+            TimeSpan.TryParse(dto.EndTime,   out var et);
 
-        await _db.SaveChangesAsync();
-        return Ok(new ResponseDto { Success = true, Message = "Updated" });
+            schedule.ClassId   = dto.ClassId;
+            schedule.SubjectId = dto.SubjectId;
+            schedule.TeacherId = dto.TeacherId;
+            schedule.Day       = dto.Day       ?? "";
+            schedule.StartTime = st;
+            schedule.EndTime   = et;
+            schedule.Room      = dto.Room      ?? "";
+
+            await _db.SaveChangesAsync();
+            return Ok(new ResponseDto { Success = true, Message = "Schedule updated" });
+        }
+        catch (Exception ex) { return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message }); }
     }
 
-    [HttpDelete("{id}")]
+    // DELETE /api/schedules/{id}
+    [HttpDelete("{id:int}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
-        var entry = await _db.Schedules.FindAsync(id);
-        if (entry == null) return NotFound(new ResponseDto { Success = false, Message = "Not found" });
-        _db.Schedules.Remove(entry);
-        await _db.SaveChangesAsync();
-        return Ok(new ResponseDto { Success = true, Message = "Deleted" });
+        try
+        {
+            var schedule = await _db.Schedules.FindAsync(id);
+            if (schedule == null) return NotFound(new ResponseDto { Success = false, Message = "Not found" });
+            _db.Schedules.Remove(schedule);
+            await _db.SaveChangesAsync();
+            return Ok(new ResponseDto { Success = true, Message = "Deleted" });
+        }
+        catch (Exception ex) { return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message }); }
     }
 }
