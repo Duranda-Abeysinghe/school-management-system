@@ -6,22 +6,23 @@ import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
 
 // Admin pages
-import AdminDashboard    from './pages/admin/AdminDashboard';
-import StudentList       from './pages/admin/students/StudentList';
-import StudentAdd        from './pages/admin/students/StudentAdd';
-import StudentEdit       from './pages/admin/students/StudentEdit';
-import TeacherList       from './pages/admin/teachers/TeacherList';
-import TeacherAdd        from './pages/admin/teachers/TeacherAdd';
-import ClassList         from './pages/admin/classes/ClassList';
-import SubjectList       from './pages/admin/subjects/SubjectList';
-import Announcements     from './pages/admin/announcements/Announcements';
-import Reports           from './pages/admin/reports/Reports';
-import DonorList         from './pages/admin/donors/DonorList';
-import DonorAdd          from './pages/admin/donors/DonorAdd';
-import DonorEdit         from './pages/admin/donors/DonorEdit';
-import DonorDetail       from './pages/admin/donors/DonorDetail';
+import AdminDashboard     from './pages/admin/AdminDashboard';
+import StudentList        from './pages/admin/students/StudentList';
+import StudentAdd         from './pages/admin/students/StudentAdd';
+import StudentEdit        from './pages/admin/students/StudentEdit';
+import TeacherList        from './pages/admin/teachers/TeacherList';
+import TeacherAdd         from './pages/admin/teachers/TeacherAdd';
+import ClassList          from './pages/admin/classes/ClassList';
+import SubjectList        from './pages/admin/subjects/SubjectList';
+import Announcements      from './pages/admin/announcements/Announcements';
+import Reports            from './pages/admin/reports/Reports';
+import DonorList          from './pages/admin/donors/DonorList';
+import DonorAdd           from './pages/admin/donors/DonorAdd';
+import DonorEdit          from './pages/admin/donors/DonorEdit';
+import DonorDetail        from './pages/admin/donors/DonorDetail';
 import ScheduleManagement from './pages/admin/schedule/ScheduleManagement';
-import UserManagement    from './pages/admin/UserManagement';
+import PrimaryTimetable   from './pages/admin/schedule/PrimaryTimetable';
+import UserManagement     from './pages/admin/UserManagement';
 
 // Teacher pages
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
@@ -72,22 +73,23 @@ export default function App() {
           <Route path="/dashboard" element={<Navigate to="/admin/dashboard" />} />
 
           {/* Admin */}
-          <Route path="/admin/dashboard"         element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-          <Route path="/admin/students"          element={<AdminRoute><StudentList /></AdminRoute>} />
-          <Route path="/admin/students/add"      element={<AdminRoute><StudentAdd /></AdminRoute>} />
-          <Route path="/admin/students/edit/:id" element={<AdminRoute><StudentEdit /></AdminRoute>} />
-          <Route path="/admin/teachers"          element={<AdminRoute><TeacherList /></AdminRoute>} />
-          <Route path="/admin/teachers/add"      element={<AdminRoute><TeacherAdd /></AdminRoute>} />
-          <Route path="/admin/classes"           element={<AdminRoute><ClassList /></AdminRoute>} />
-          <Route path="/admin/subjects"          element={<AdminRoute><SubjectList /></AdminRoute>} />
-          <Route path="/admin/announcements"     element={<AdminRoute><Announcements /></AdminRoute>} />
-          <Route path="/admin/reports"           element={<AdminRoute><Reports /></AdminRoute>} />
-          <Route path="/admin/donors"            element={<AdminRoute><DonorList /></AdminRoute>} />
-          <Route path="/admin/donors/add"        element={<AdminRoute><DonorAdd /></AdminRoute>} />
-          <Route path="/admin/donors/edit/:id"   element={<AdminRoute><DonorEdit /></AdminRoute>} />
-          <Route path="/admin/donors/:id"        element={<AdminRoute><DonorDetail /></AdminRoute>} />
-          <Route path="/admin/schedule"          element={<AdminRoute><ScheduleManagement /></AdminRoute>} />
-          <Route path="/admin/users"             element={<AdminRoute><UserManagement /></AdminRoute>} />
+          <Route path="/admin/dashboard"          element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/students"           element={<AdminRoute><StudentList /></AdminRoute>} />
+          <Route path="/admin/students/add"       element={<AdminRoute><StudentAdd /></AdminRoute>} />
+          <Route path="/admin/students/edit/:id"  element={<AdminRoute><StudentEdit /></AdminRoute>} />
+          <Route path="/admin/teachers"           element={<AdminRoute><TeacherList /></AdminRoute>} />
+          <Route path="/admin/teachers/add"       element={<AdminRoute><TeacherAdd /></AdminRoute>} />
+          <Route path="/admin/classes"            element={<AdminRoute><ClassList /></AdminRoute>} />
+          <Route path="/admin/subjects"           element={<AdminRoute><SubjectList /></AdminRoute>} />
+          <Route path="/admin/announcements"      element={<AdminRoute><Announcements /></AdminRoute>} />
+          <Route path="/admin/reports"            element={<AdminRoute><Reports /></AdminRoute>} />
+          <Route path="/admin/donors"             element={<AdminRoute><DonorList /></AdminRoute>} />
+          <Route path="/admin/donors/add"         element={<AdminRoute><DonorAdd /></AdminRoute>} />
+          <Route path="/admin/donors/edit/:id"    element={<AdminRoute><DonorEdit /></AdminRoute>} />
+          <Route path="/admin/donors/:id"         element={<AdminRoute><DonorDetail /></AdminRoute>} />
+          <Route path="/admin/schedule"           element={<AdminRoute><ScheduleManagement /></AdminRoute>} />
+          <Route path="/admin/primary-timetable"  element={<AdminRoute><PrimaryTimetable /></AdminRoute>} />
+          <Route path="/admin/users"              element={<AdminRoute><UserManagement /></AdminRoute>} />
 
           {/* Teacher */}
           <Route path="/teacher/dashboard"  element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />

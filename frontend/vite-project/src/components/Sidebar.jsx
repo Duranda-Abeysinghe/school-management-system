@@ -16,6 +16,7 @@ const roleConfig = {
       { path: '/admin/announcements', label: 'Announcements', icon: '📢', color: '#fb923c' },
       { path: '/admin/reports',       label: 'Reports',       icon: '📊', color: '#22d3ee' },
       { path: '/admin/schedule', label: 'Schedules', icon: '📅', color: '#22d3ee' },
+      { path: '/admin/primary-timetable', label: 'Primary Timetable', icon: '🗓️', color: '#38bdf8' },
       { path: '/admin/donors', label: 'Donors', icon: '🍱', color: '#22d3ee' },
       { path: '/admin/users', label: 'User Management', icon: '👥', color: '#f472b6' },
     ]
