@@ -20,6 +20,8 @@ public class AppDbContext : DbContext
     public DbSet<Donor>        Donors        { get; set; }
     public DbSet<DonorSchedule> DonorSchedules { get; set; }
     public DbSet<DonorFoodItem> DonorFoodItems { get; set; }
+    public DbSet<ClassTeacherAssignment> ClassTeacherAssignments { get; set; }
+    public DbSet<WeeklySchedule> WeeklySchedules { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -55,6 +57,13 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<DonorSchedule>()
             .HasIndex(s => new { s.DonorId, s.Year, s.Month })
+            .IsUnique();
+               modelBuilder.Entity<ClassTeacherAssignment>()
+            .HasIndex(a => new { a.ClassId, a.AcademicYear })
+            .IsUnique();
+ 
+        modelBuilder.Entity<WeeklySchedule>()
+            .HasIndex(w => new { w.ClassId, w.AcademicYear, w.DayOfWeek, w.SubjectId })
             .IsUnique();
     }
 }
