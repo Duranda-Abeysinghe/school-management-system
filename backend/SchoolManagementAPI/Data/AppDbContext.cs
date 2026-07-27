@@ -22,7 +22,7 @@ public class AppDbContext : DbContext
     public DbSet<DonorFoodItem> DonorFoodItems { get; set; }
     public DbSet<ClassTeacherAssignment> ClassTeacherAssignments { get; set; }
     public DbSet<WeeklySchedule> WeeklySchedules { get; set; }
-
+    public DbSet<DonorMealRecord> DonorMealRecords { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Student>()

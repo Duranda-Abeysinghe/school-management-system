@@ -298,4 +298,76 @@ public async Task<IActionResult> GetById(int id)
         }
         catch (Exception ex) { return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message }); }
     }
+    
+    [HttpGet("schedules/{scheduleId}/meal-sheet")]
+public async Task<IActionResult> GetMealSheet(int scheduleId)
+{
+    var schedule = await _db.DonorSchedules
+        .Include(s => s.Class1).Include(s => s.Class2).Include(s => s.Class3)
+        .Include(s => s.Donor)
+        .FirstOrDefaultAsync(s => s.Id == scheduleId);
+
+    if (schedule == null)
+        return NotFound(new ResponseDto { Success = false, Message = "Schedule not found" });
+
+    var classIds = new[] { schedule.ClassId1, schedule.ClassId2, schedule.ClassId3 }
+        .Where(c => c.HasValue).Select(c => c!.Value).ToList();
+
+    var classes = await _db.Classes.Where(c => classIds.Contains(c.Id)).ToListAsync();
+
+    var daysInMonth = DateTime.DaysInMonth(schedule.Year, schedule.Month);
+    var savedRecords = await _db.DonorMealRecords
+        .Where(r => r.ScheduleId == scheduleId)
+        .ToListAsync();
+
+    var result = new List<object>();
+
+    for (int day = 1; day <= daysInMonth; day++)
+    {
+        var date = new DateTime(schedule.Year, schedule.Month, day);
+        var classRows = new List<object>();
+
+        foreach (var cls in classes)
+        {
+            var saved = savedRecords.FirstOrDefault(r => r.RecordDate.Date == date.Date && r.ClassId == cls.Id);
+            var className = $"{cls.ClassName} {cls.Section}".Trim();
+
+            if (saved != null)
+            {
+                classRows.Add(new {
+                    classId = cls.Id, className,
+                    maleCount = saved.MaleCount, femaleCount = saved.FemaleCount,
+                    totalCount = saved.TotalCount, source = "saved"
+                });
+            }
+            else
+            {
+                // NOTE: replace "_db.Attendances" below with your real DbSet name once confirmed
+                var presentStudents = await _db.Attendance
+                    .Where(a => a.Date.Date == date.Date && a.Status == "Present" && a.ClassId == cls.Id)
+                    .Join(_db.Students, a => a.StudentId, s => s.Id, (a, s) => s)
+                    .ToListAsync();
+
+                int male = presentStudents.Count(s => s.Gender == "Male");
+                int female = presentStudents.Count(s => s.Gender == "Female");
+
+                classRows.Add(new {
+                    classId = cls.Id, className,
+                    maleCount = male, femaleCount = female,
+                    totalCount = male + female, source = "auto"
+                });
+            }
+        }
+
+        result.Add(new { date = date.ToString("yyyy-MM-dd"), classes = classRows });
+    }
+
+    return Ok(new
+    {
+        donorName = schedule.Donor?.Name,
+        year = schedule.Year,
+        month = schedule.Month,
+        days = result
+    });
+}
 }

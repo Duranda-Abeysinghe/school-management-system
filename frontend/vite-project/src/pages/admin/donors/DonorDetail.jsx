@@ -442,6 +442,7 @@ export default function DonorDetail() {
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: '4px' }}>
+                        <Link to={`/admin/donors/schedule/${s.id}/meal-sheet`} className="btn btn-outline btn-sm">📋</Link>
                         <button onClick={() => openEdit(s)} className="btn btn-warning btn-sm">✏️</button>
                         <button onClick={() => deleteSchedule(s.id)} className="btn btn-danger btn-sm">🗑️</button>
                       </div>
