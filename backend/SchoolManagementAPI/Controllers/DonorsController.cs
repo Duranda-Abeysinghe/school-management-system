@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SchoolManagementAPI.Data;
 using SchoolManagementAPI.DTOs;
 using SchoolManagementAPI.Models;
+using SchoolManagementAPI.Services;
 
 namespace SchoolManagementAPI.Controllers;
 
@@ -13,7 +14,13 @@ namespace SchoolManagementAPI.Controllers;
 public class DonorsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public DonorsController(AppDbContext db) { _db = db; }
+    private readonly SchoolCalendarService _calendar;
+
+    public DonorsController(AppDbContext db, SchoolCalendarService calendar)
+    {
+        _db = db;
+        _calendar = calendar;
+    }
 
     // ── GET /api/donors ──────────────────────────────────────
     [HttpGet]
@@ -44,8 +51,8 @@ public class DonorsController : ControllerBase
     }
 
     // ── GET /api/donors/{id} ─────────────────────────────────
-   [HttpGet("{id:int}")]
-public async Task<IActionResult> GetById(int id)
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id)
     {
         try
         {
@@ -82,7 +89,6 @@ public async Task<IActionResult> GetById(int id)
     }
 
     // ── GET /api/donors/year/{year} ──────────────────────────
-    // Returns all donors scheduled for a specific year
     [HttpGet("year/{year:int}")]
     public async Task<IActionResult> GetByYear(int year)
     {
@@ -177,7 +183,7 @@ public async Task<IActionResult> GetById(int id)
             if (donor == null)
                 return NotFound(new ResponseDto { Success = false, Message = "Donor not found" });
 
-            _db.Donors.Remove(donor);   // Cascades to schedules + food items
+            _db.Donors.Remove(donor);
             await _db.SaveChangesAsync();
             return Ok(new ResponseDto { Success = true, Message = "Donor deleted" });
         }
@@ -188,26 +194,21 @@ public async Task<IActionResult> GetById(int id)
     //  SCHEDULE ENDPOINTS
     // ════════════════════════════════════════════════════════
 
-    // ── POST /api/donors/schedules ───────────────────────────
-    // Assign a donor to a month + classes + food items
     [HttpPost("schedules")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CreateSchedule([FromBody] DonorScheduleDto dto)
     {
         try
         {
-            // Check donor exists
             var donor = await _db.Donors.FindAsync(dto.DonorId);
             if (donor == null)
                 return NotFound(new ResponseDto { Success = false, Message = "Donor not found" });
 
-            // Check no duplicate month/year for this donor
             var exists = await _db.DonorSchedules
                 .AnyAsync(s => s.DonorId == dto.DonorId && s.Year == dto.Year && s.Month == dto.Month);
             if (exists)
                 return BadRequest(new ResponseDto { Success = false, Message = "This donor already has a schedule for that month/year" });
 
-            // Count total months assigned this year — max 3
             var monthCount = await _db.DonorSchedules
                 .CountAsync(s => s.DonorId == dto.DonorId && s.Year == dto.Year);
             if (monthCount >= 3)
@@ -228,7 +229,6 @@ public async Task<IActionResult> GetById(int id)
             _db.DonorSchedules.Add(schedule);
             await _db.SaveChangesAsync();
 
-            // Add food items
             foreach (var item in dto.FoodItems.Where(f => !string.IsNullOrWhiteSpace(f)))
             {
                 _db.DonorFoodItems.Add(new DonorFoodItem
@@ -244,7 +244,6 @@ public async Task<IActionResult> GetById(int id)
         catch (Exception ex) { return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message }); }
     }
 
-    // ── PUT /api/donors/schedules/{id} ───────────────────────
     [HttpPut("schedules/{id}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateSchedule(int id, [FromBody] DonorScheduleDto dto)
@@ -264,7 +263,6 @@ public async Task<IActionResult> GetById(int id)
             schedule.MealRate = dto.MealRate;
             schedule.Notes    = dto.Notes;
 
-            // Replace food items
             _db.DonorFoodItems.RemoveRange(schedule.FoodItems);
             foreach (var item in dto.FoodItems.Where(f => !string.IsNullOrWhiteSpace(f)))
             {
@@ -281,7 +279,6 @@ public async Task<IActionResult> GetById(int id)
         catch (Exception ex) { return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message }); }
     }
 
-    // ── DELETE /api/donors/schedules/{id} ────────────────────
     [HttpDelete("schedules/{id}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteSchedule(int id)
@@ -298,76 +295,142 @@ public async Task<IActionResult> GetById(int id)
         }
         catch (Exception ex) { return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message }); }
     }
-    
+
+    // ════════════════════════════════════════════════════════
+    //  MEAL SHEET (skips weekends/holidays via SchoolCalendarService)
+    // ════════════════════════════════════════════════════════
+
     [HttpGet("schedules/{scheduleId}/meal-sheet")]
-public async Task<IActionResult> GetMealSheet(int scheduleId)
-{
-    var schedule = await _db.DonorSchedules
-        .Include(s => s.Class1).Include(s => s.Class2).Include(s => s.Class3)
-        .Include(s => s.Donor)
-        .FirstOrDefaultAsync(s => s.Id == scheduleId);
-
-    if (schedule == null)
-        return NotFound(new ResponseDto { Success = false, Message = "Schedule not found" });
-
-    var classIds = new[] { schedule.ClassId1, schedule.ClassId2, schedule.ClassId3 }
-        .Where(c => c.HasValue).Select(c => c!.Value).ToList();
-
-    var classes = await _db.Classes.Where(c => classIds.Contains(c.Id)).ToListAsync();
-
-    var daysInMonth = DateTime.DaysInMonth(schedule.Year, schedule.Month);
-    var savedRecords = await _db.DonorMealRecords
-        .Where(r => r.ScheduleId == scheduleId)
-        .ToListAsync();
-
-    var result = new List<object>();
-
-    for (int day = 1; day <= daysInMonth; day++)
+    public async Task<IActionResult> GetMealSheet(int scheduleId)
     {
-        var date = new DateTime(schedule.Year, schedule.Month, day);
-        var classRows = new List<object>();
-
-        foreach (var cls in classes)
+        try
         {
-            var saved = savedRecords.FirstOrDefault(r => r.RecordDate.Date == date.Date && r.ClassId == cls.Id);
-            var className = $"{cls.ClassName} {cls.Section}".Trim();
+            var schedule = await _db.DonorSchedules
+                .Include(s => s.Class1).Include(s => s.Class2).Include(s => s.Class3)
+                .Include(s => s.Donor)
+                .FirstOrDefaultAsync(s => s.Id == scheduleId);
 
-            if (saved != null)
+            if (schedule == null)
+                return NotFound(new ResponseDto { Success = false, Message = "Schedule not found" });
+
+            var classIds = new[] { schedule.ClassId1, schedule.ClassId2, schedule.ClassId3 }
+                .Where(c => c.HasValue).Select(c => c!.Value).ToList();
+
+            var classes = await _db.Classes.Where(c => classIds.Contains(c.Id)).ToListAsync();
+
+            var monthStart = new DateTime(schedule.Year, schedule.Month, 1);
+            var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+            var schoolDayMap = await _calendar.GetSchoolDayMapAsync(monthStart, monthEnd);
+
+            var savedRecords = await _db.DonorMealRecords
+                .Where(r => r.ScheduleId == scheduleId)
+                .ToListAsync();
+
+            var result = new List<object>();
+
+            for (var date = monthStart; date <= monthEnd; date = date.AddDays(1))
             {
-                classRows.Add(new {
-                    classId = cls.Id, className,
-                    maleCount = saved.MaleCount, femaleCount = saved.FemaleCount,
-                    totalCount = saved.TotalCount, source = "saved"
-                });
+                if (!schoolDayMap[date.Date]) continue; // skip weekends/holidays
+
+                var classRows = new List<object>();
+
+                foreach (var cls in classes)
+                {
+                    var saved = savedRecords.FirstOrDefault(r => r.RecordDate.Date == date.Date && r.ClassId == cls.Id);
+                    var className = $"{cls.ClassName} {cls.Section}".Trim();
+
+                    if (saved != null)
+                    {
+                        classRows.Add(new {
+                            classId = cls.Id, className,
+                            maleCount = saved.MaleCount, femaleCount = saved.FemaleCount,
+                            totalCount = saved.TotalCount, source = "saved"
+                        });
+                    }
+                    else
+                    {
+                        var presentStudents = await _db.Attendance
+                            .Where(a => a.Date.Date == date.Date && a.Status == "Present" && a.ClassId == cls.Id)
+                            .Join(_db.Students, a => a.StudentId, s => s.Id, (a, s) => s)
+                            .ToListAsync();
+
+                        int male = presentStudents.Count(s => s.Gender == "Male");
+                        int female = presentStudents.Count(s => s.Gender == "Female");
+
+                        classRows.Add(new {
+                            classId = cls.Id, className,
+                            maleCount = male, femaleCount = female,
+                            totalCount = male + female, source = "auto"
+                        });
+                    }
+                }
+
+                result.Add(new { date = date.ToString("yyyy-MM-dd"), classes = classRows });
             }
-            else
+
+            return Ok(new
             {
-                // NOTE: replace "_db.Attendances" below with your real DbSet name once confirmed
-                var presentStudents = await _db.Attendance
-                    .Where(a => a.Date.Date == date.Date && a.Status == "Present" && a.ClassId == cls.Id)
-                    .Join(_db.Students, a => a.StudentId, s => s.Id, (a, s) => s)
-                    .ToListAsync();
-
-                int male = presentStudents.Count(s => s.Gender == "Male");
-                int female = presentStudents.Count(s => s.Gender == "Female");
-
-                classRows.Add(new {
-                    classId = cls.Id, className,
-                    maleCount = male, femaleCount = female,
-                    totalCount = male + female, source = "auto"
-                });
-            }
+                donorName = schedule.Donor?.Name,
+                year = schedule.Year,
+                month = schedule.Month,
+                days = result
+            });
         }
-
-        result.Add(new { date = date.ToString("yyyy-MM-dd"), classes = classRows });
+        catch (Exception ex) { return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message }); }
     }
 
-    return Ok(new
+    public class MealDayEntryDto
     {
-        donorName = schedule.Donor?.Name,
-        year = schedule.Year,
-        month = schedule.Month,
-        days = result
-    });
-}
+        public string Date { get; set; } = string.Empty;
+        public List<MealClassEntryDto> Classes { get; set; } = new();
+    }
+    public class MealClassEntryDto
+    {
+        public int ClassId { get; set; }
+        public int MaleCount { get; set; }
+        public int FemaleCount { get; set; }
+    }
+
+    [HttpPost("schedules/{scheduleId}/meal-sheet")]
+    [Authorize(Roles = "Admin,Teacher")]
+    public async Task<IActionResult> SaveMealDay(int scheduleId, [FromBody] MealDayEntryDto entry)
+    {
+        try
+        {
+            var date = DateTime.Parse(entry.Date);
+
+            foreach (var c in entry.Classes)
+            {
+                var existing = await _db.DonorMealRecords.FirstOrDefaultAsync(r =>
+                    r.ScheduleId == scheduleId && r.RecordDate.Date == date.Date && r.ClassId == c.ClassId);
+
+                if (existing != null)
+                {
+                    existing.MaleCount = c.MaleCount;
+                    existing.FemaleCount = c.FemaleCount;
+                    existing.TotalCount = c.MaleCount + c.FemaleCount;
+                    existing.UpdatedAt = DateTime.Now;
+                }
+                else
+                {
+                    _db.DonorMealRecords.Add(new DonorMealRecord
+                    {
+                        ScheduleId = scheduleId,
+                        RecordDate = date,
+                        ClassId = c.ClassId,
+                        MaleCount = c.MaleCount,
+                        FemaleCount = c.FemaleCount,
+                        TotalCount = c.MaleCount + c.FemaleCount
+                    });
+                }
+            }
+
+            await _db.SaveChangesAsync();
+            return Ok(new ResponseDto { Success = true, Message = "Saved" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ResponseDto { Success = false, Message = ex.Message });
+        }
+    }
 }

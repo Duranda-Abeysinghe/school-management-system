@@ -24,6 +24,7 @@ import ScheduleManagement from './pages/admin/schedule/ScheduleManagement';
 import PrimaryTimetable   from './pages/admin/schedule/PrimaryTimetable';
 import UserManagement     from './pages/admin/UserManagement';
 import ScholarshipOfficial from './pages/shared/ScholarshipOfficial';
+import DonorMealSheet from './pages/admin/donors/DonorMealSheet';
 
 // Teacher pages
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
@@ -92,6 +93,7 @@ export default function App() {
           <Route path="/admin/primary-timetable"  element={<AdminRoute><PrimaryTimetable /></AdminRoute>} />
           <Route path="/admin/users"              element={<AdminRoute><UserManagement /></AdminRoute>} />
           <Route path="/scholarship-result" element={<ProtectedRoute><ScholarshipOfficial /></ProtectedRoute>} />
+          <Route path="/admin/donors/schedule/:scheduleId/meal-sheet" element={<AdminRoute><DonorMealSheet /></AdminRoute>} />
 
           {/* Teacher */}
           <Route path="/teacher/dashboard"  element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />
