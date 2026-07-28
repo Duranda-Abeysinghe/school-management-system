@@ -23,6 +23,8 @@ public class AppDbContext : DbContext
     public DbSet<ClassTeacherAssignment> ClassTeacherAssignments { get; set; }
     public DbSet<WeeklySchedule> WeeklySchedules { get; set; }
     public DbSet<DonorMealRecord> DonorMealRecords { get; set; }
+    public DbSet<SchoolCalendarOverride> SchoolCalendarOverrides { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Student>()
@@ -58,12 +60,17 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<DonorSchedule>()
             .HasIndex(s => new { s.DonorId, s.Year, s.Month })
             .IsUnique();
-               modelBuilder.Entity<ClassTeacherAssignment>()
+
+        modelBuilder.Entity<ClassTeacherAssignment>()
             .HasIndex(a => new { a.ClassId, a.AcademicYear })
             .IsUnique();
- 
+
         modelBuilder.Entity<WeeklySchedule>()
             .HasIndex(w => new { w.ClassId, w.AcademicYear, w.DayOfWeek, w.SubjectId })
+            .IsUnique();
+
+        modelBuilder.Entity<SchoolCalendarOverride>()
+            .HasIndex(o => o.OverrideDate)
             .IsUnique();
     }
 }

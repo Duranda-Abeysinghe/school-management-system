@@ -52,6 +52,8 @@ builder.Services.AddScoped<JwtService>();
 builder.Services.AddHostedService<AnnouncementCleanupService>();
 builder.Services.AddControllers();
 
+builder.Services.AddScoped<SchoolManagementAPI.Services.SchoolCalendarService>();
+
 var app = builder.Build();
 
 app.UseCors("AllowReact");

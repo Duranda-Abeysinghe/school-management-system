@@ -72,10 +72,11 @@ export default function DonorMealSheet() {
 
   const exportPdf = () => {
     const doc = new jsPDF();
-    let y = 10;
+    const HEADER_HEIGHT = 32; // reserve space so content never sits under the header band
+    let y = HEADER_HEIGHT;
 
     sheet.days.forEach((day) => {
-      if (y > 260) { doc.addPage(); y = 10; }
+      if (y > 255) { doc.addPage(); y = HEADER_HEIGHT; }
 
       doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 58, 95);
       doc.text(`${sheet.donorName}`, 14, y);
@@ -85,7 +86,7 @@ export default function DonorMealSheet() {
 
       autoTable(doc, {
         startY: y,
-        head: [['Class', 'Female (ගැහැණු)', 'Male (පිරිමි)', 'Total (එකතුව)']],
+        head: [['Class', 'Female', 'Male', 'Total']],
         body: [
           ...day.classes.map(c => [c.className, c.femaleCount, c.maleCount, c.totalCount]),
           ['Total',
@@ -182,7 +183,7 @@ export default function DonorMealSheet() {
                   </tr>
                 ))}
                 <tr style={{ borderTop: '1px solid #e2e8f0', fontWeight: 700 }}>
-                  <td>එකතුව</td>
+                  <td>Total</td>
                   <td>{day.classes.reduce((s,c) => s + c.femaleCount, 0)}</td>
                   <td>{day.classes.reduce((s,c) => s + c.maleCount, 0)}</td>
                   <td>{day.classes.reduce((s,c) => s + c.totalCount, 0)}</td>
