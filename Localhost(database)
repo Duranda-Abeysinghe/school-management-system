@@ -1,0 +1,448 @@
+-- ================================================================
+--  SCHOOL MANAGEMENT SYSTEM — FULL RESET + RICH SAMPLE DATA
+--  Matches AppDbContext.cs exactly. Run top to bottom in
+--  MySQL Workbench on your connection.
+-- ================================================================
+
+SET FOREIGN_KEY_CHECKS = 0;
+DROP DATABASE IF EXISTS school_management_db;
+CREATE DATABASE school_management_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE school_management_db;
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ================================================================
+--  TABLES
+-- ================================================================
+
+CREATE TABLE Users (
+    Id        INT AUTO_INCREMENT PRIMARY KEY,
+    Name      VARCHAR(100) NOT NULL,
+    Email     VARCHAR(100) NOT NULL UNIQUE,
+    Password  VARCHAR(255) NOT NULL,
+    Role      ENUM('Admin','Teacher','Student') NOT NULL,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Teachers (
+    Id       INT AUTO_INCREMENT PRIMARY KEY,
+    FullName VARCHAR(100) NOT NULL,
+    Email    VARCHAR(100) NOT NULL UNIQUE,
+    Phone    VARCHAR(20)  NOT NULL DEFAULT '',
+    Gender   VARCHAR(10)  NOT NULL DEFAULT '',
+    Subject  VARCHAR(100) NOT NULL DEFAULT '',
+    Address  TEXT,
+    Status   ENUM('Active','Inactive') DEFAULT 'Active',
+    UserId   INT,
+    FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE SET NULL
+);
+
+CREATE TABLE Classes (
+    Id        INT AUTO_INCREMENT PRIMARY KEY,
+    ClassName VARCHAR(50) NOT NULL,
+    Section   VARCHAR(10) NOT NULL DEFAULT 'A',
+    Grade     INT NULL,
+    TeacherId INT,
+    FOREIGN KEY (TeacherId) REFERENCES Teachers(Id) ON DELETE SET NULL
+);
+
+CREATE TABLE Subjects (
+    Id          INT AUTO_INCREMENT PRIMARY KEY,
+    SubjectName VARCHAR(100) NOT NULL,
+    SubjectCode VARCHAR(20)  UNIQUE,
+    TeacherId   INT,
+    Type        ENUM('Core','Elective') DEFAULT 'Core',
+    NameSinhala VARCHAR(50) NULL,
+    FOREIGN KEY (TeacherId) REFERENCES Teachers(Id) ON DELETE SET NULL
+);
+
+CREATE TABLE Students (
+    Id            INT AUTO_INCREMENT PRIMARY KEY,
+    AdmissionNo   VARCHAR(20)  UNIQUE,
+    FullName      VARCHAR(100) NOT NULL,
+    Email         VARCHAR(100) NOT NULL UNIQUE,
+    Phone         VARCHAR(20)  NOT NULL DEFAULT '',
+    Gender        VARCHAR(10)  NOT NULL DEFAULT '',
+    DateOfBirth   DATE,
+    Address       TEXT,
+    ParentName    VARCHAR(100) NOT NULL DEFAULT '',
+    ParentContact VARCHAR(20)  NOT NULL DEFAULT '',
+    Status        ENUM('Active','Inactive') DEFAULT 'Active',
+    ClassId       INT,
+    UserId        INT,
+    JoinDate      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    AcademicYear  INT,
+    FOREIGN KEY (ClassId) REFERENCES Classes(Id) ON DELETE SET NULL,
+    FOREIGN KEY (UserId)  REFERENCES Users(Id)   ON DELETE SET NULL
+);
+
+CREATE TABLE Attendance (
+    Id        INT AUTO_INCREMENT PRIMARY KEY,
+    StudentId INT  NOT NULL,
+    ClassId   INT,
+    Date      DATE NOT NULL,
+    Status    ENUM('Present','Absent','Late') DEFAULT 'Present',
+    FOREIGN KEY (StudentId) REFERENCES Students(Id) ON DELETE CASCADE,
+    FOREIGN KEY (ClassId)   REFERENCES Classes(Id)  ON DELETE SET NULL
+);
+
+CREATE TABLE Marks (
+    Id           INT AUTO_INCREMENT PRIMARY KEY,
+    StudentId    INT NOT NULL,
+    SubjectId    INT NOT NULL,
+    ExamType     VARCHAR(50),
+    Marks        INT,
+    Grade        VARCHAR(5),
+    AcademicYear INT,
+    FOREIGN KEY (StudentId) REFERENCES Students(Id) ON DELETE CASCADE,
+    FOREIGN KEY (SubjectId) REFERENCES Subjects(Id) ON DELETE CASCADE
+);
+
+CREATE TABLE Schedules (
+    Id        INT AUTO_INCREMENT PRIMARY KEY,
+    ClassId   INT,
+    SubjectId INT,
+    TeacherId INT,
+    Day       VARCHAR(20),
+    StartTime TIME,
+    EndTime   TIME,
+    Room      VARCHAR(20),
+    FOREIGN KEY (ClassId)   REFERENCES Classes(Id)   ON DELETE SET NULL,
+    FOREIGN KEY (SubjectId) REFERENCES Subjects(Id)  ON DELETE SET NULL,
+    FOREIGN KEY (TeacherId) REFERENCES Teachers(Id)  ON DELETE SET NULL
+);
+
+CREATE TABLE Requests (
+    Id        INT AUTO_INCREMENT PRIMARY KEY,
+    StudentId INT NOT NULL,
+    Type      VARCHAR(100),
+    Message   TEXT,
+    FileUrl   VARCHAR(255),
+    Status    ENUM('Pending','Approved','Rejected') DEFAULT 'Pending',
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (StudentId) REFERENCES Students(Id) ON DELETE CASCADE
+);
+
+CREATE TABLE Announcements (
+    Id        INT AUTO_INCREMENT PRIMARY KEY,
+    Title     VARCHAR(200) NOT NULL,
+    Message   TEXT         NOT NULL,
+    Target    ENUM('All','Students','Teachers') DEFAULT 'All',
+    Priority  ENUM('Normal','High','Urgent')    DEFAULT 'Normal',
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Donors (
+    Id        INT AUTO_INCREMENT PRIMARY KEY,
+    Name      VARCHAR(200) NOT NULL,
+    Phone     VARCHAR(20)  NOT NULL DEFAULT '',
+    NicNumber VARCHAR(20)  NOT NULL DEFAULT '',
+    Address   TEXT,
+    Status    VARCHAR(20)  NOT NULL DEFAULT 'Active',
+    Notes     TEXT,
+    CreatedAt DATETIME NOT NULL DEFAULT NOW(),
+    UpdatedAt DATETIME NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE DonorSchedules (
+    Id        INT AUTO_INCREMENT PRIMARY KEY,
+    DonorId   INT NOT NULL,
+    Year      INT NOT NULL,
+    Month     INT NOT NULL,
+    ClassId1  INT,
+    ClassId2  INT,
+    ClassId3  INT,
+    MealRate  DECIMAL(10,2) DEFAULT 110.00,
+    Notes     TEXT,
+    CreatedAt DATETIME NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (DonorId)  REFERENCES Donors(Id)  ON DELETE CASCADE,
+    FOREIGN KEY (ClassId1) REFERENCES Classes(Id) ON DELETE SET NULL,
+    FOREIGN KEY (ClassId2) REFERENCES Classes(Id) ON DELETE SET NULL,
+    FOREIGN KEY (ClassId3) REFERENCES Classes(Id) ON DELETE SET NULL,
+    UNIQUE KEY uq_donor_year_month (DonorId, Year, Month)
+);
+
+CREATE TABLE DonorFoodItems (
+    Id              INT AUTO_INCREMENT PRIMARY KEY,
+    DonorScheduleId INT NOT NULL,
+    FoodItem        VARCHAR(200) NOT NULL,
+    CreatedAt       DATETIME NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (DonorScheduleId) REFERENCES DonorSchedules(Id) ON DELETE CASCADE
+);
+
+CREATE TABLE ClassTeacherAssignments (
+    Id           INT AUTO_INCREMENT PRIMARY KEY,
+    ClassId      INT NOT NULL,
+    TeacherId    INT NOT NULL,
+    AcademicYear INT NOT NULL,
+    CreatedAt    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_class_year (ClassId, AcademicYear),
+    FOREIGN KEY (ClassId) REFERENCES Classes(Id) ON DELETE CASCADE,
+    FOREIGN KEY (TeacherId) REFERENCES Teachers(Id)
+);
+
+CREATE TABLE WeeklySchedules (
+    Id           INT AUTO_INCREMENT PRIMARY KEY,
+    ClassId      INT NOT NULL,
+    AcademicYear INT NOT NULL,
+    DayOfWeek    ENUM('Monday','Tuesday','Wednesday','Thursday','Friday') NOT NULL,
+    SubjectId    INT NOT NULL,
+    TeacherId    INT NOT NULL,
+    OrderIndex   INT NOT NULL DEFAULT 1,
+    FOREIGN KEY (ClassId) REFERENCES Classes(Id) ON DELETE CASCADE,
+    FOREIGN KEY (SubjectId) REFERENCES Subjects(Id),
+    FOREIGN KEY (TeacherId) REFERENCES Teachers(Id),
+    UNIQUE KEY uq_class_year_day_subject (ClassId, AcademicYear, DayOfWeek, SubjectId)
+);
+
+CREATE TABLE DonorMealRecords (
+    Id          INT AUTO_INCREMENT PRIMARY KEY,
+    ScheduleId  INT NOT NULL,
+    RecordDate  DATE NOT NULL,
+    ClassId     INT NOT NULL,
+    MaleCount   INT DEFAULT 0,
+    FemaleCount INT DEFAULT 0,
+    TotalCount  INT DEFAULT 0,
+    CreatedAt   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_schedule_date_class (ScheduleId, RecordDate, ClassId),
+    FOREIGN KEY (ScheduleId) REFERENCES DonorSchedules(Id) ON DELETE CASCADE,
+    FOREIGN KEY (ClassId)    REFERENCES Classes(Id)        ON DELETE CASCADE
+);
+
+CREATE TABLE SchoolCalendarOverrides (
+    Id           INT AUTO_INCREMENT PRIMARY KEY,
+    OverrideDate DATE NOT NULL UNIQUE,
+    IsSchoolDay  BOOLEAN NOT NULL,
+    Reason       VARCHAR(255),
+    CreatedAt    DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ================================================================
+--  SEED: Users
+--  admin123   → $2a$10$.R4lJWV0mBDSnzSO2g9bYubmiCyssrwqkahVrvlDScF/mDiXl8RKG
+--  teacher123 → $2a$10$lfk6.KkYXXb1DlwCVfl1ae2xJFRDL6UnMUNSl7kWr7vIvagC3H0Uu
+--  student123 → $2a$10$xgANuFJTJNGn7qrBRLjg4OvbRD2X6aqod49Rt9LjO/4pcTk2lLcge
+-- ================================================================
+INSERT INTO Users (Name, Email, Password, Role) VALUES
+('Admin User',             'admin@school.com',  '$2a$10$.R4lJWV0mBDSnzSO2g9bYubmiCyssrwqkahVrvlDScF/mDiXl8RKG', 'Admin'),
+('Mr. Sunil Rathnayake',   'sunil@school.com',  '$2a$10$lfk6.KkYXXb1DlwCVfl1ae2xJFRDL6UnMUNSl7kWr7vIvagC3H0Uu', 'Teacher'),
+('Ms. Dilani Jayawardena', 'dilani@school.com', '$2a$10$lfk6.KkYXXb1DlwCVfl1ae2xJFRDL6UnMUNSl7kWr7vIvagC3H0Uu', 'Teacher'),
+('Mr. Kamal Dissanayake',  'kamal@school.com',  '$2a$10$lfk6.KkYXXb1DlwCVfl1ae2xJFRDL6UnMUNSl7kWr7vIvagC3H0Uu', 'Teacher'),
+('Ms. Priya Fernando',     'priya@school.com',  '$2a$10$lfk6.KkYXXb1DlwCVfl1ae2xJFRDL6UnMUNSl7kWr7vIvagC3H0Uu', 'Teacher'),
+('Mr. Nimal Silva',        'nimal@school.com',  '$2a$10$lfk6.KkYXXb1DlwCVfl1ae2xJFRDL6UnMUNSl7kWr7vIvagC3H0Uu', 'Teacher'),
+('Ms. Kamani Perera',      'kamani@school.com', '$2a$10$lfk6.KkYXXb1DlwCVfl1ae2xJFRDL6UnMUNSl7kWr7vIvagC3H0Uu', 'Teacher'),
+('Mr. Rohan Kumara',       'rohan@school.com',  '$2a$10$lfk6.KkYXXb1DlwCVfl1ae2xJFRDL6UnMUNSl7kWr7vIvagC3H0Uu', 'Teacher'),
+('Ms. Sandya Wickrama',    'sandya@school.com', '$2a$10$lfk6.KkYXXb1DlwCVfl1ae2xJFRDL6UnMUNSl7kWr7vIvagC3H0Uu', 'Teacher'),
+('Mr. Lalith Bandara',     'lalith@school.com', '$2a$10$lfk6.KkYXXb1DlwCVfl1ae2xJFRDL6UnMUNSl7kWr7vIvagC3H0Uu', 'Teacher'),
+('Ms. Iresha Gunawardena', 'iresha@school.com', '$2a$10$lfk6.KkYXXb1DlwCVfl1ae2xJFRDL6UnMUNSl7kWr7vIvagC3H0Uu', 'Teacher'),
+('Amal Perera',            'amal@mail.com',     '$2a$10$xgANuFJTJNGn7qrBRLjg4OvbRD2X6aqod49Rt9LjO/4pcTk2lLcge', 'Student'),
+('Nimal Silva',            'nimal.s@mail.com',  '$2a$10$xgANuFJTJNGn7qrBRLjg4OvbRD2X6aqod49Rt9LjO/4pcTk2lLcge', 'Student'),
+('Kamala Fernando',        'kamala@mail.com',   '$2a$10$xgANuFJTJNGn7qrBRLjg4OvbRD2X6aqod49Rt9LjO/4pcTk2lLcge', 'Student'),
+('Saman Kumara',           'saman@mail.com',    '$2a$10$xgANuFJTJNGn7qrBRLjg4OvbRD2X6aqod49Rt9LjO/4pcTk2lLcge', 'Student'),
+('Dilini Jayawardena',     'dilini@mail.com',   '$2a$10$xgANuFJTJNGn7qrBRLjg4OvbRD2X6aqod49Rt9LjO/4pcTk2lLcge', 'Student'),
+('Kasun Perera',           'kasun@mail.com',    '$2a$10$xgANuFJTJNGn7qrBRLjg4OvbRD2X6aqod49Rt9LjO/4pcTk2lLcge', 'Student'),
+('Thisari Silva',          'thisari@mail.com',  '$2a$10$xgANuFJTJNGn7qrBRLjg4OvbRD2X6aqod49Rt9LjO/4pcTk2lLcge', 'Student'),
+('Ranil Fernando',         'ranil@mail.com',    '$2a$10$xgANuFJTJNGn7qrBRLjg4OvbRD2X6aqod49Rt9LjO/4pcTk2lLcge', 'Student'),
+('Sachini Kumara',         'sachini@mail.com',  '$2a$10$xgANuFJTJNGn7qrBRLjg4OvbRD2X6aqod49Rt9LjO/4pcTk2lLcge', 'Student'),
+('Chamara Bandara',        'chamara@mail.com',  '$2a$10$xgANuFJTJNGn7qrBRLjg4OvbRD2X6aqod49Rt9LjO/4pcTk2lLcge', 'Student');
+
+-- ================================================================
+--  SEED: Teachers (linked to Users 2-11)
+-- ================================================================
+INSERT INTO Teachers (FullName, Email, Phone, Gender, Subject, Address, Status, UserId) VALUES
+('Mr. Sunil Rathnayake',   'sunil@school.com',  '071-1111111','Male',  'Mathematics','Colombo', 'Active', 2),
+('Ms. Dilani Jayawardena', 'dilani@school.com', '072-2222222','Female','Science',    'Kandy',   'Active', 3),
+('Mr. Kamal Dissanayake',  'kamal@school.com',  '073-3333333','Male',  'English',    'Galle',   'Active', 4),
+('Ms. Priya Fernando',     'priya@school.com',  '074-4444444','Female','History',    'Colombo', 'Active', 5),
+('Mr. Nimal Silva',        'nimal@school.com',  '075-5555555','Male',  'Geography',  'Matara',  'Active', 6),
+('Ms. Kamani Perera',      'kamani@school.com', '076-6666666','Female','Art',        'Negombo', 'Active', 7),
+('Mr. Rohan Kumara',       'rohan@school.com',  '077-7777777','Male',  'Music',      'Colombo', 'Active', 8),
+('Ms. Sandya Wickrama',    'sandya@school.com', '078-8888888','Female','PE',         'Kandy',   'Active', 9),
+('Mr. Lalith Bandara',     'lalith@school.com', '071-9999999','Male',  'ICT',        'Colombo', 'Active',10),
+('Ms. Iresha Gunawardena', 'iresha@school.com', '072-0000000','Female','Sinhala',    'Gampaha', 'Active',11);
+
+-- ================================================================
+--  SEED: Classes — Grade 1A/1B … Grade 5A/5B (10 total)
+-- ================================================================
+INSERT INTO Classes (ClassName, Section, Grade, TeacherId) VALUES
+('Grade 1','A',1, 1),  -- Id 1
+('Grade 1','B',1, 2),  -- Id 2
+('Grade 2','A',2, 3),  -- Id 3
+('Grade 2','B',2, 4),  -- Id 4
+('Grade 3','A',3, 5),  -- Id 5
+('Grade 3','B',3, 6),  -- Id 6
+('Grade 4','A',4, 7),  -- Id 7
+('Grade 4','B',4, 8),  -- Id 8
+('Grade 5','A',5, 9),  -- Id 9
+('Grade 5','B',5,10);  -- Id 10
+
+-- ================================================================
+--  SEED: Subjects
+-- ================================================================
+INSERT INTO Subjects (SubjectName, SubjectCode, TeacherId, Type, NameSinhala) VALUES
+('Mathematics','MATH01', 1,'Core',   'ගණිතය'),
+('Science',    'SCI01',  2,'Core',   'විද්‍යාව'),
+('English',    'ENG01',  3,'Core',   'ඉංග්‍රීසි'),
+('History',    'HIS01',  4,'Elective','ඉතිහාසය'),
+('Geography',  'GEO01',  5,'Elective','භූගෝල විද්‍යාව'),
+('Art',        'ART01',  6,'Elective','කලාව'),
+('Music',      'MUS01',  7,'Elective','සංගීතය'),
+('PE',         'PHY01',  8,'Core',   'ශාරීරික අධ්‍යාපනය'),
+('ICT',        'ICT01',  9,'Core',   'තොරතුරු තාක්ෂණය'),
+('Sinhala',    'SIN01', 10,'Core',   'සිංහල');
+
+-- ================================================================
+--  SEED: Students — 10 students across all 5 grades
+-- ================================================================
+INSERT INTO Students
+  (AdmissionNo,FullName,Email,Phone,Gender,DateOfBirth,Address,ParentName,ParentContact,Status,ClassId,UserId,JoinDate,AcademicYear)
+VALUES
+('S2026001','Amal Perera',        'amal@mail.com',      '071-1234567','Male',  '2020-05-15','Colombo','Mr. Perera',       '077-1111111','Active', 9,12,'2026-01-05',2026),
+('S2026002','Nimal Silva',        'nimal.s@mail.com',   '072-2345678','Male',  '2020-08-22','Kandy',  'Mr. Silva',        '077-2222222','Active', 7,13,'2026-01-05',2026),
+('S2026003','Kamala Fernando',    'kamala@mail.com',    '073-3456789','Female','2021-03-10','Galle',  'Mrs. Fernando',    '077-3333333','Active', 5,14,'2026-01-05',2026),
+('S2026004','Saman Kumara',       'saman@mail.com',     '074-4567890','Male',  '2021-11-28','Matara', 'Mr. Kumara',       '077-4444444','Active', 5,15,'2026-01-05',2026),
+('S2026005','Dilini Jayawardena', 'dilini@mail.com',    '075-5678901','Female','2022-06-14','Colombo','Mrs. Jayawardena', '077-5555555','Active', 3,16,'2026-01-05',2026),
+('S2026006','Kasun Perera',       'kasun@mail.com',     '076-6789012','Male',  '2022-01-20','Negombo','Mr. Perera',       '077-6666666','Active', 3,17,'2026-01-05',2026),
+('S2026007','Thisari Silva',      'thisari@mail.com',   '071-7890123','Female','2023-09-05','Colombo','Mr. Silva',        '077-7777777','Active', 1,18,'2026-01-05',2026),
+('S2026008','Ranil Fernando',     'ranil@mail.com',     '072-8901234','Male',  '2023-12-18','Kandy',  'Mrs. Fernando',    '077-8888888','Active', 1,19,'2026-01-05',2026),
+('S2026009','Sachini Kumara',     'sachini@mail.com',   '073-9012345','Female','2020-07-25','Galle',  'Mr. Kumara',       '077-9999999','Active',10,20,'2026-01-05',2026),
+('S2026010','Chamara Bandara',    'chamara@mail.com',   '074-0123456','Male',  '2021-04-30','Matara', 'Mr. Bandara',      '077-0000000','Active', 8,21,'2026-01-05',2026);
+
+-- ================================================================
+--  SEED: Attendance — spread across a school week
+-- ================================================================
+INSERT INTO Attendance (StudentId,ClassId,Date,Status) VALUES
+(1,9,'2026-07-27','Present'),(2,7,'2026-07-27','Present'),(3,5,'2026-07-27','Absent'),
+(4,5,'2026-07-27','Present'),(5,3,'2026-07-27','Late'),   (6,3,'2026-07-27','Present'),
+(7,1,'2026-07-27','Present'),(8,1,'2026-07-27','Present'),(9,10,'2026-07-27','Present'),(10,8,'2026-07-27','Present'),
+(1,9,'2026-07-28','Present'),(2,7,'2026-07-28','Absent'), (3,5,'2026-07-28','Present'),
+(4,5,'2026-07-28','Present'),(5,3,'2026-07-28','Present'),(6,3,'2026-07-28','Present'),
+(7,1,'2026-07-28','Late'),   (8,1,'2026-07-28','Present'),(9,10,'2026-07-28','Present'),(10,8,'2026-07-28','Present'),
+(1,9,'2026-07-29','Present'),(2,7,'2026-07-29','Present'),(3,5,'2026-07-29','Present'),
+(4,5,'2026-07-29','Present'),(5,3,'2026-07-29','Present'),(6,3,'2026-07-29','Absent'),
+(7,1,'2026-07-29','Present'),(8,1,'2026-07-29','Present'),(9,10,'2026-07-29','Present'),(10,8,'2026-07-29','Present');
+
+-- ================================================================
+--  SEED: Marks
+-- ================================================================
+INSERT INTO Marks (StudentId,SubjectId,ExamType,Marks,Grade,AcademicYear) VALUES
+(1,1,'Term Test 1',85,'A',2026),(1,2,'Term Test 1',72,'B',2026),(1,3,'Term Test 1',90,'A+',2026),
+(2,1,'Term Test 1',78,'B',2026),(2,2,'Term Test 1',88,'A',2026),
+(3,1,'Term Test 1',65,'C',2026),(4,1,'Term Test 1',92,'A+',2026),
+(5,1,'Term Test 1',75,'B',2026),(6,1,'Term Test 1',80,'A',2026),
+(7,1,'Term Test 1',95,'A+',2026),(8,1,'Term Test 1',60,'C',2026),
+(9,1,'Term Test 1',88,'A',2026),(10,1,'Term Test 1',70,'B',2026);
+
+-- ================================================================
+--  SEED: Schedules (period-based timetable)
+-- ================================================================
+INSERT INTO Schedules (ClassId,SubjectId,TeacherId,Day,StartTime,EndTime,Room) VALUES
+(1,1,1,'Monday',   '08:00','09:00','R101'),(1,2,2,'Tuesday', '10:00','11:00','R102'),
+(2,3,3,'Wednesday','08:00','09:00','R103'),(3,1,1,'Tuesday', '08:00','09:00','R201'),
+(4,2,2,'Thursday', '10:00','11:00','R202'),(5,1,1,'Friday',  '08:00','09:00','R301'),
+(6,4,4,'Monday',   '11:00','12:00','R302'),(7,5,5,'Tuesday', '11:00','12:00','R401'),
+(8,6,6,'Wednesday','11:00','12:00','R402'),(9,8,8,'Friday',  '10:00','11:00','R501'),
+(10,9,9,'Monday',  '09:00','10:00','R502'),(9,10,10,'Tuesday','09:00','10:00','R503');
+
+-- ================================================================
+--  SEED: Announcements
+-- ================================================================
+INSERT INTO Announcements (Title,Message,Target,Priority) VALUES
+('Term Exam Schedule 2026','Term exams begin August 1st. Prepare accordingly.','All','High'),
+('Sports Day 2026','Annual sports day on August 25th at the main ground.','All','Normal'),
+('Teacher Meeting','Staff meeting on August 5th at 2:00 PM in the hall.','Teachers','Normal'),
+('Library Closed','Library closed August 3rd for maintenance.','Students','Normal');
+
+-- ================================================================
+--  SEED: Requests
+-- ================================================================
+INSERT INTO Requests (StudentId,Type,Message,Status) VALUES
+(1,'Leave Request','Need 2 days leave for family function.','Approved'),
+(2,'Re-Evaluation','Please re-check my Mathematics paper Question 5.','Pending'),
+(3,'Leave Request','Medical appointment.','Pending');
+
+-- ================================================================
+--  SEED: Donors
+-- ================================================================
+INSERT INTO Donors (Name, Phone, NicNumber, Address, Status, Notes) VALUES
+('Vasantha Gunasekara', '071-1234567', '196512345678', 'Matara',  'Active', ''),
+('R.K. Gantha',         '072-2345678', '197012345678', 'Matara',  'Active', ''),
+('Nimal Perera',        '073-3456789', '197512345678', 'Colombo', 'Active', ''),
+('Kamala Silva',        '074-4567890', '198012345678', 'Galle',   'Active', '');
+
+-- ================================================================
+--  SEED: DonorSchedules — 2026 assignments (ClassId 7=Grade4A, 8=Grade4B, 9=Grade5A)
+-- ================================================================
+INSERT INTO DonorSchedules (DonorId, Year, Month, ClassId1, ClassId2, ClassId3, MealRate, Notes) VALUES
+(1, 2026,  8, 7, 8, 9,    110.00, 'August donation'),
+(1, 2026,  9, 7, 8, NULL, 110.00, 'September donation'),
+(2, 2026, 10, 7, 8, 9,    110.00, ''),
+(3, 2026, 11, 7, 8, NULL, 110.00, ''),
+(4, 2026, 12, 9, 10,NULL, 110.00, '');
+
+-- ================================================================
+--  SEED: DonorFoodItems
+-- ================================================================
+INSERT INTO DonorFoodItems (DonorScheduleId, FoodItem) VALUES
+(1, 'බත්'), (1, 'පලා'), (1, 'පරිප්පු'), (1, 'මාළු'), (1, 'අල බැදුම'),
+(2, 'බත්'), (2, 'පලා'), (2, 'පරිප්පු'), (2, 'බිත්තර'),
+(3, 'බත්'), (3, 'සලාද'), (3, 'මස්');
+
+-- ================================================================
+--  SEED: ClassTeacherAssignments (2026)
+-- ================================================================
+INSERT INTO ClassTeacherAssignments (ClassId, TeacherId, AcademicYear) VALUES
+(1,1,2026),(2,2,2026),(3,3,2026),(4,4,2026),(5,5,2026),
+(6,6,2026),(7,7,2026),(8,8,2026),(9,9,2026),(10,10,2026);
+
+-- ================================================================
+--  SEED: WeeklySchedules (sample for Grade 4A, Id=7)
+-- ================================================================
+INSERT INTO WeeklySchedules (ClassId, AcademicYear, DayOfWeek, SubjectId, TeacherId, OrderIndex) VALUES
+(7,2026,'Monday',   1,1,1),
+(7,2026,'Monday',   3,3,2),
+(7,2026,'Tuesday',  2,2,1),
+(7,2026,'Tuesday',  10,10,2),
+(7,2026,'Wednesday',1,1,1),
+(7,2026,'Thursday', 9,9,1),
+(7,2026,'Friday',   8,8,1);
+
+-- ================================================================
+--  SEED: DonorMealRecords — a few confirmed days for Aug 2026 (Vasantha, ScheduleId=1)
+-- ================================================================
+INSERT INTO DonorMealRecords (ScheduleId, RecordDate, ClassId, MaleCount, FemaleCount, TotalCount) VALUES
+(1, '2026-08-03', 7, 18, 20, 38),
+(1, '2026-08-03', 8, 17, 19, 36),
+(1, '2026-08-03', 9, 16, 21, 37),
+(1, '2026-08-04', 7, 19, 20, 39),
+(1, '2026-08-04', 8, 17, 18, 35),
+(1, '2026-08-04', 9, 16, 20, 36);
+
+-- ================================================================
+--  SEED: SchoolCalendarOverrides — sample holiday + weekend program
+-- ================================================================
+INSERT INTO SchoolCalendarOverrides (OverrideDate, IsSchoolDay, Reason) VALUES
+('2026-08-25', TRUE,  'Sports Day (Weekend Program)'),   -- a Saturday marked ON
+('2026-08-10', FALSE, 'Public Holiday'),                 -- a normal weekday marked OFF
+('2026-12-25', FALSE, 'Christmas Holiday');
+
+-- ================================================================
+--  VERIFY — should show row counts for every table
+-- ================================================================
+SELECT 'Users' AS TableName, COUNT(*) AS Rows FROM Users UNION ALL
+SELECT 'Teachers',           COUNT(*) FROM Teachers UNION ALL
+SELECT 'Classes',            COUNT(*) FROM Classes UNION ALL
+SELECT 'Subjects',           COUNT(*) FROM Subjects UNION ALL
+SELECT 'Students',           COUNT(*) FROM Students UNION ALL
+SELECT 'Attendance',         COUNT(*) FROM Attendance UNION ALL
+SELECT 'Marks',               COUNT(*) FROM Marks UNION ALL
+SELECT 'Schedules',           COUNT(*) FROM Schedules UNION ALL
+SELECT 'Announcements',       COUNT(*) FROM Announcements UNION ALL
+SELECT 'Requests',            COUNT(*) FROM Requests UNION ALL
+SELECT 'Donors',              COUNT(*) FROM Donors UNION ALL
+SELECT 'DonorSchedules',      COUNT(*) FROM DonorSchedules UNION ALL
+SELECT 'DonorFoodItems',      COUNT(*) FROM DonorFoodItems UNION ALL
+SELECT 'ClassTeacherAssignments', COUNT(*) FROM ClassTeacherAssignments UNION ALL
+SELECT 'WeeklySchedules',     COUNT(*) FROM WeeklySchedules UNION ALL
+SELECT 'DonorMealRecords',    COUNT(*) FROM DonorMealRecords UNION ALL
+SELECT 'SchoolCalendarOverrides', COUNT(*) FROM SchoolCalendarOverrides;
